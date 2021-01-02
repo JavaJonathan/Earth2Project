@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.29123.88
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Earth2.io", "Earth2.io\Earth2.io.csproj", "{B315D5B8-613E-4267-8B00-A57B6E657E63}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{B315D5B8-613E-4267-8B00-A57B6E657E63}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B315D5B8-613E-4267-8B00-A57B6E657E63}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B315D5B8-613E-4267-8B00-A57B6E657E63}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B315D5B8-613E-4267-8B00-A57B6E657E63}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {679EC40F-E851-4D70-8B04-1861F503E6EB}
+	EndGlobalSection
+EndGlobal

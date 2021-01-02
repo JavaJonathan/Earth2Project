@@ -1,0 +1,14 @@
+C:\Users\jonat\source\repos\Earth2.io\Earth2.io\bin\Debug\netcoreapp2.1\Earth2.io.deps.json
+C:\Users\jonat\source\repos\Earth2.io\Earth2.io\bin\Debug\netcoreapp2.1\Earth2.io.runtimeconfig.json
+C:\Users\jonat\source\repos\Earth2.io\Earth2.io\bin\Debug\netcoreapp2.1\Earth2.io.runtimeconfig.dev.json
+C:\Users\jonat\source\repos\Earth2.io\Earth2.io\bin\Debug\netcoreapp2.1\Earth2.io.dll
+C:\Users\jonat\source\repos\Earth2.io\Earth2.io\bin\Debug\netcoreapp2.1\Earth2.io.pdb
+C:\Users\jonat\source\repos\Earth2.io\Earth2.io\obj\Debug\netcoreapp2.1\Earth2.io.csprojAssemblyReference.cache
+C:\Users\jonat\source\repos\Earth2.io\Earth2.io\obj\Debug\netcoreapp2.1\Earth2.io.csproj.CoreCompileInputs.cache
+C:\Users\jonat\source\repos\Earth2.io\Earth2.io\obj\Debug\netcoreapp2.1\Earth2.io.RazorAssemblyInfo.cache
+C:\Users\jonat\source\repos\Earth2.io\Earth2.io\obj\Debug\netcoreapp2.1\Earth2.io.RazorAssemblyInfo.cs
+C:\Users\jonat\source\repos\Earth2.io\Earth2.io\obj\Debug\netcoreapp2.1\Earth2.io.AssemblyInfoInputs.cache
+C:\Users\jonat\source\repos\Earth2.io\Earth2.io\obj\Debug\netcoreapp2.1\Earth2.io.AssemblyInfo.cs
+C:\Users\jonat\source\repos\Earth2.io\Earth2.io\obj\Debug\netcoreapp2.1\Earth2.io.RazorTargetAssemblyInfo.cache
+C:\Users\jonat\source\repos\Earth2.io\Earth2.io\obj\Debug\netcoreapp2.1\Earth2.io.dll
+C:\Users\jonat\source\repos\Earth2.io\Earth2.io\obj\Debug\netcoreapp2.1\Earth2.io.pdb
