@@ -96,6 +96,7 @@ namespace Earth2.io.Data
                 case "Started Searching": trackingTypeId = "032B2C5F-F983-48DD-9C89-7629BBC2C7F3"; break;
                 case "Found Match": trackingTypeId = "3696C17B-451B-484A-9161-F8149FE3579E"; break;
                 case "User Banned": trackingTypeId = "0ED601B8-6EC7-40FE-ABBE-5E737E9F88B1"; break;
+                case "User Stopped Searching": trackingTypeId = "000A9275D-AEE5-41DA-B89E-E86E25C17895"; break;
             }
 
             try
