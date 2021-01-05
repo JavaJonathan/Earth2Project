@@ -216,21 +216,106 @@ namespace Earth2.io.Data
             return "Records Deleted Successfully";
         }
 
-        public static string InsertUserMatchedRecord()
+        public static string InsertUserMatchedRecord(string userId, string userMatchedId)
         {
+            try
+            {
+                using (SqlConnection)
+                {
+                    SqlConnection.ConnectionString = ConnectionString;
+                    SqlConnection.Open();
 
+                    var insertMatchedCommand = $@"insert into UsersMatched
+                                                    values('{userId}', '{userMatchedId}', GETDATE())";
+
+                    using (var command = new SqlCommand(insertMatchedCommand, SqlConnection))
+                    {
+                        using (var reader = command.ExecuteReader())
+                        {
+                            while (reader.Read())
+                            {
+                                //do nothing
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                return $"DB Call Failed in InsertUserMatchedRecord function in the insertMatchedCommand: {e}";
+            }
+
+            return "Matched Record Inserted Successfully";
         }
 
         //we will need to call this right beofre we start searching for users then another when we find a possible match 
-        public static string CheckIfUserAlreadyMatched()
+        //we will need to check if thereis more than one record here, if so, there was a race con
+        public static string CheckIfUserAlreadyMatched(string userId)
         {
-            //we will need to check if thereis more than one record here, if so, there was a race con
+            var alreadyMatched = "false";
+
+            try
+            {
+                using (SqlConnection)
+                {
+                    SqlConnection.ConnectionString = ConnectionString;
+                    SqlConnection.Open();
+
+                    var getAlreadyMatchedCommand = $@"select * from UsersMatched where UserId = '{userId}' or UserMatchedWith = '{userId}'";
+
+                    using (var command = new SqlCommand(getAlreadyMatchedCommand, SqlConnection))
+                    {
+                        using (var reader = command.ExecuteReader())
+                        {
+                            while (reader.Read())
+                            {
+                                if (reader.HasRows)
+                                {
+                                    alreadyMatched = "true";
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                return $"DB Call Failed in CheckIfUserAlreadyMatched function in the getAlreadyMatchedCommand: {e}";
+            }
+
+            return alreadyMatched;
         }
 
         //this is called when the matched user finds out they were matched
-        public static string RemoveUserMatchedRecord()
+        public static string RemoveUserMatchedRecord(string userId)
         {
+            try
+            {
+                using (SqlConnection)
+                {
+                    SqlConnection.ConnectionString = ConnectionString;
+                    SqlConnection.Open();
 
+                    var deleteMatchedCommand = $@"delete from UsersMatched where UserMatchedWith = '{userId}'";
+
+                    using (var command = new SqlCommand(deleteMatchedCommand, SqlConnection))
+                    {
+                        using (var reader = command.ExecuteReader())
+                        {
+                            while (reader.Read())
+                            {
+                                //do nothing
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                return $"DB Call Failed in RemoveUserMatchedRecord function in the deleteMatchedCommand: {e}";
+            }
+
+            return "Matched Record Deleted Successfully";
         }
     }
 }
