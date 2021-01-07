@@ -18,7 +18,7 @@ namespace Earth2.io.Data
             ConnectionString = connectionString;
         }
 
-        public static string AddNewUser(string activationCode, string username)
+        public static string AddNewUser(string referralCode, string username)
         {
             try
             {
@@ -28,7 +28,7 @@ namespace Earth2.io.Data
                     SqlConnection.Open();
 
                     var insertUserCommand = $@"insert into AspNetUsers
-                                                values(NEWID(), '{activationCode}', 0, null, null, null, 0, 0, null, 0, 0, '{username}')";
+                                                values(NEWID(), '{referralCode}', 0, null, null, null, 0, 0, null, 0, 0, '{username}')";
 
                     using (var command = new SqlCommand(insertUserCommand, SqlConnection))
                     {
@@ -51,7 +51,7 @@ namespace Earth2.io.Data
         }
 
         //we have to return strings in these functions because we want to return string errors.
-        public static string CheckIfUserExists(string activationCode)
+        public static string CheckIfUserExists(string referralCode)
         {
             var userExists = false;
             try
@@ -61,7 +61,7 @@ namespace Earth2.io.Data
                     SqlConnection.ConnectionString = ConnectionString;
                     SqlConnection.Open();
 
-                    var checkUserCommand = $@"select * from AspNetUsers where Email = '{activationCode}'";
+                    var checkUserCommand = $@"select * from AspNetUsers where Email = '{referralCode}'";
 
                     using (var command = new SqlCommand(checkUserCommand, SqlConnection))
                     {

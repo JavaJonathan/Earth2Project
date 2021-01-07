@@ -18,7 +18,7 @@ namespace Earth2.io.Data
             ConnectionString = connectionString;
         }
 
-        public static string InsertSearchingRecord(string userId)
+        public static string InsertSearchingRecord(string referralCode)
         {
             try
             {
@@ -27,8 +27,12 @@ namespace Earth2.io.Data
                     SqlConnection.ConnectionString = ConnectionString;
                     SqlConnection.Open();
 
-                    var insertSearchCommand = $@"insert into UsersBuying
-                                               values('{userId}', GETDATE())";
+                    var insertSearchCommand = $@"DECLARE @UserId uniqueidentifier;
+
+                                                Select @UserId = Id from AspNetUsers where Email = '{referralCode}'
+
+                                                insert into UsersBuying
+                                                values(@UserId, GETDATE())";
 
                     using (var command = new SqlCommand(insertSearchCommand, SqlConnection))
                     {
@@ -50,9 +54,10 @@ namespace Earth2.io.Data
             return "Buying Record Insert Succeeded.";
         }
 
-        public static string FindAnotherUserSearching()
+        public static string[] FindAnotherUserSearching(string referralCode)
         {
-            var matchedUserId = "";
+            var matchedUserReferralCode = "";
+            var matchedUserUsername = "";
 
             try
             {
@@ -61,7 +66,10 @@ namespace Earth2.io.Data
                     SqlConnection.ConnectionString = ConnectionString;
                     SqlConnection.Open();
 
-                    var getSearchingCommand = $@"select top 1 UserId from UsersBuying order by CreatedOn desc";
+                    var getSearchingCommand = $@"select top 1 Email, Username from UsersBuying 
+                                                join AspNetUsers on AspNetUsers.Id = UsersBuying.UserId
+                                                where AspNetUsers.Email <> '{referralCode}'
+                                                order by CreatedOn desc";
 
                     using (var command = new SqlCommand(getSearchingCommand, SqlConnection))
                     {
@@ -69,7 +77,11 @@ namespace Earth2.io.Data
                         {
                             while (reader.Read())
                             {
-                                matchedUserId = reader[0].ToString();
+                                if (reader.HasRows)
+                                {
+                                    matchedUserReferralCode = reader[0].ToString();
+                                    matchedUserUsername = reader[1].ToString();
+                                }
                             }
                         }
                     }
@@ -77,10 +89,10 @@ namespace Earth2.io.Data
             }
             catch (Exception e)
             {
-                return $"DB Call Failed in FindAnotherUserSearching function in the getSearchingCommand: {e}";
+                return new[] { $"DB Call Failed in FindAnotherUserSearching function in the getSearchingCommand: {e}" };
             }
 
-            return matchedUserId;
+            return new[] { matchedUserReferralCode, matchedUserUsername};
         }
 
         public static string GetNumberOfUsersSearching()
@@ -116,7 +128,7 @@ namespace Earth2.io.Data
             return numberOfUsersBuying;
         }
 
-        public static string CheckIfUserIsAlreadySearching(string activationCode)
+        public static string CheckIfUserIsAlreadySearching(string referralCode)
         {
             var alreadySearching = "false";
 
@@ -129,7 +141,7 @@ namespace Earth2.io.Data
 
                     var getAlreadySearchingCommand = $@"select * from AspNetUsers 
                                                 join UsersBuying on UsersBuying.UserId = AspNetUsers.Id
-                                                where Email = '{activationCode}'";
+                                                where Email = '{referralCode}'";
 
                     using (var command = new SqlCommand(getAlreadySearchingCommand, SqlConnection))
                     {
@@ -154,7 +166,7 @@ namespace Earth2.io.Data
             return alreadySearching;
         }
 
-        public static string RemoveSearchingRecord(string activationCode)
+        public static string RemoveSearchingRecord(string referralCode)
         {
             try
             {
@@ -163,7 +175,7 @@ namespace Earth2.io.Data
                     SqlConnection.ConnectionString = ConnectionString;
                     SqlConnection.Open();
 
-                    var deleteSearchingCommand = $@"delete from UsersBuying where UserId in (select Id from AspNetUsers where Email = '{activationCode}')";
+                    var deleteSearchingCommand = $@"delete from UsersBuying where UserId in (select Id from AspNetUsers where Email = '{referralCode}')";
 
                     using (var command = new SqlCommand(deleteSearchingCommand, SqlConnection))
                     {
