@@ -31,6 +31,7 @@ namespace Earth2.io
             ReportRepository.SetConnection(connectionString);
             UserRepository.SetConnection(connectionString);
             SearchRepository.SetConnection(connectionString);
+            ErrorRepository.SetConnection(connectionString);
 
             services.AddMvc().SetCompatibilityVersion(CompatibilityVersion.Version_2_1);
         }

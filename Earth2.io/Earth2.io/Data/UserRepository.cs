@@ -53,7 +53,7 @@ namespace Earth2.io.Data
         //we have to return strings in these functions because we want to return string errors.
         public static string CheckIfUserExists(string referralCode)
         {
-            var userExists = false;
+            var userExists = "false";
             try
             {
                 using (SqlConnection)
@@ -71,7 +71,7 @@ namespace Earth2.io.Data
                             {
                                 if (reader.HasRows)
                                 {
-                                    userExists = true;
+                                    userExists = "true";
                                 }
                             }
                         }
@@ -80,13 +80,14 @@ namespace Earth2.io.Data
             }
             catch (Exception e)
             {
-                return $"DB Call Failed in CheckIfUserExists function in the checkUserCommand: {e}";
+                ErrorRepository.LogError(referralCode, $"DB Call Failed in CheckIfUserExists function in the checkUserCommand: {e}");
+                return "Error Occurred.";
             }
 
-            return userExists.ToString();
+            return userExists;
         }
 
-        public static string InsertTrackingRecord(string userId, string trackingType, string description)
+        public static bool InsertTrackingRecord(string referralCode, string trackingType, string description)
         {
             var trackingTypeId = "";
 
@@ -107,7 +108,7 @@ namespace Earth2.io.Data
                     SqlConnection.Open();
 
                     var insertTrackerCommand = $@"insert into UserTracking
-                                                values(NEWID(), '{userId}', '{trackingTypeId}', '{description}', GETDATE())";
+                                                values(NEWID(), '{referralCode}', '{trackingTypeId}', '{description}', GETDATE())";
 
                     using (var command = new SqlCommand(insertTrackerCommand, SqlConnection))
                     {
@@ -123,10 +124,11 @@ namespace Earth2.io.Data
             }
             catch (Exception e)
             {
-                return $"DB Call Failed in InsertTrackingRecord function in the insertTrackerCommand: {e}";
+                ErrorRepository.LogError(referralCode, $"DB Call Failed in InsertTrackingRecord function in the insertTrackerCommand: {e}");
+                return false;
             }
 
-            return "";
+            return true;
         }
     }
 }

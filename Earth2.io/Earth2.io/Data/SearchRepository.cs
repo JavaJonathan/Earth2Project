@@ -140,8 +140,8 @@ namespace Earth2.io.Data
                     SqlConnection.Open();
 
                     var getAlreadySearchingCommand = $@"select * from AspNetUsers 
-                                                join UsersBuying on UsersBuying.UserId = AspNetUsers.Id
-                                                where Email = '{referralCode}'";
+                                                    join UsersBuying on UsersBuying.UserId = AspNetUsers.Id
+                                                    where Email = '{referralCode}'";
 
                     using (var command = new SqlCommand(getAlreadySearchingCommand, SqlConnection))
                     {
@@ -194,10 +194,10 @@ namespace Earth2.io.Data
                 return $"DB Call Failed in RemoveSearchingRecord function in the deleteSearchingCommand: {e}";
             }
 
-            return "Record Deleted Successfully";
+            return "true";
         }
 
-        public static string RemoveBothSearchingRecords(string buyerActivationCode, string matchedBuyerActivationCode)
+        public static string RemoveBothSearchingRecords(string buyerReferralCode, string matchedBuyerReferralCode)
         {
             try
             {
@@ -206,7 +206,7 @@ namespace Earth2.io.Data
                     SqlConnection.ConnectionString = ConnectionString;
                     SqlConnection.Open();
 
-                    var deleteSearchingCommand = $@"delete from UsersBuying where UserId in (select Id from AspNetUsers where Email in ('{buyerActivationCode}', '{matchedBuyerActivationCode}'))";
+                    var deleteSearchingCommand = $@"delete from UsersBuying where UserId in (select Id from AspNetUsers where Email in ('{buyerReferralCode}', '{matchedBuyerReferralCode}'))";
 
                     using (var command = new SqlCommand(deleteSearchingCommand, SqlConnection))
                     {
@@ -228,7 +228,7 @@ namespace Earth2.io.Data
             return "Records Deleted Successfully";
         }
 
-        public static string InsertUserMatchedRecord(string userId, string userMatchedId)
+        public static string InsertUserMatchedRecord(string referralCode, string userMatchedReferralCode)
         {
             try
             {
@@ -237,8 +237,17 @@ namespace Earth2.io.Data
                     SqlConnection.ConnectionString = ConnectionString;
                     SqlConnection.Open();
 
-                    var insertMatchedCommand = $@"insert into UsersMatched
-                                                    values('{userId}', '{userMatchedId}', GETDATE())";
+                    var insertMatchedCommand = $@"DECLARE @UserId uniqueidentifier;
+                                                DECLARE @UserMatchedId uniqueidentifier;
+
+                                                Select @UserId = Id from AspNetUsers where Email = '{referralCode}'
+                                                Select @UserMatchedId = Id from AspNetUsers where Email = '{userMatchedReferralCode}'
+
+                                                insert into UsersBuying
+                                                values(@UserId, GETDATE())
+
+                                                insert into UsersMatched
+                                                values('@UserId', '@UserMatchedId', GETDATE())";
 
                     using (var command = new SqlCommand(insertMatchedCommand, SqlConnection))
                     {
@@ -262,10 +271,8 @@ namespace Earth2.io.Data
 
         //we will need to call this right beofre we start searching for users then another when we find a possible match 
         //we will need to check if thereis more than one record here, if so, there was a race con
-        public static string CheckIfUserAlreadyMatched(string userId)
+        public static string[] CheckIfUserAlreadyMatched(string referralCode)
         {
-            var alreadyMatched = "false";
-
             try
             {
                 using (SqlConnection)
@@ -273,7 +280,14 @@ namespace Earth2.io.Data
                     SqlConnection.ConnectionString = ConnectionString;
                     SqlConnection.Open();
 
-                    var getAlreadyMatchedCommand = $@"select * from UsersMatched where UserId = '{userId}' or UserMatchedWith = '{userId}'";
+                    var getAlreadyMatchedCommand = $@"DECLARE @UserId uniqueidentifier;
+                                                   DECLARE @Count int;
+
+                                                  select @UserId = UserId, @Count = @@ROWCOUNT from UsersMatched
+                                                  join AspNetUsers on AspNetUsers.Id = UsersMatched.UserMatchedWith
+                                                  where Email = '{referralCode}'
+
+                                                  select @Count, Email, Username from AspNetUsers where Id = @UserId";
 
                     using (var command = new SqlCommand(getAlreadyMatchedCommand, SqlConnection))
                     {
@@ -281,9 +295,16 @@ namespace Earth2.io.Data
                         {
                             while (reader.Read())
                             {
+                                //we wrote the wuery this way because we need the userId of the user searching 
+                                //in order to get the user matched with userid and referral code
                                 if (reader.HasRows)
                                 {
-                                    alreadyMatched = "true";
+                                    if (int.Parse(reader[0].ToString()) > 1)
+                                    {
+                                        return new string[] { "Error: User matched with more than one person." };
+                                    }
+
+                                    return new string[] { reader[1].ToString(), reader[2].ToString() };
                                 }
                             }
                         }
@@ -292,10 +313,10 @@ namespace Earth2.io.Data
             }
             catch (Exception e)
             {
-                return $"DB Call Failed in CheckIfUserAlreadyMatched function in the getAlreadyMatchedCommand: {e}";
+                return new string[] { $"DB Call Failed in CheckIfUserAlreadyMatched function in the getAlreadyMatchedCommand: {e}" };
             }
 
-            return alreadyMatched;
+            return new string[] { "User is not already matched." };
         }
 
         //this is called when the matched user finds out they were matched
