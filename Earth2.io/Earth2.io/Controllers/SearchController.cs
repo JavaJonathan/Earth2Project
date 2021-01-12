@@ -24,11 +24,18 @@ namespace Earth2.io.Controllers
             var referralCode = userObject["referralCode"]?.ToString();
             var userName = userObject["userName"]?.ToString();
 
-            var validationPassOrFail = ValidationHelper.ValidateReferralCode(referralCode);
+            var validationPass = ValidationHelper.ValidateReferralCode(referralCode);
 
-            if (validationPassOrFail != "true") { return validationPassOrFail; }
+            if (!validationPass) { return "Invalid Referral Code"; }
 
-            //we can remove this later - we will eventually paramertize all queries
+            var isUserBanned = ValidationHelper.CheckIfUserIsBanned(referralCode);
+
+            switch (isUserBanned)
+            {
+                case "true": return "User is banned.";
+                case "Error Occurred.": return "Error Occurred.";
+            }
+
             userName = HtmlEncoder.Create().Encode(userName);
 
             if (!bool.Parse(UserRepository.CheckIfUserExists(referralCode)))
@@ -42,6 +49,7 @@ namespace Earth2.io.Controllers
             }
 
             SearchRepository.InsertSearchingRecord(referralCode);
+            UserRepository.InsertTrackingRecord(referralCode, "Started Searching", $"{referralCode} has started searching.");
 
             return "User is successfully searching.";
         }
@@ -49,31 +57,41 @@ namespace Earth2.io.Controllers
         [HttpPost("StopSearch")]
         public string StopSearch([FromBody] string referralCode)
         {
-            var userFound = new string[2];
-            var validationPassOrFail = ValidationHelper.ValidateReferralCode(referralCode);
+            var validationPass = ValidationHelper.ValidateReferralCode(referralCode);
 
-            if (validationPassOrFail != "true") { return validationPassOrFail; }
+            if (!validationPass) { return "Invalid Referral Code"; }
 
             if (!bool.Parse(UserRepository.CheckIfUserExists(referralCode)))
             {
                 return "Error. User does not exist.";
             }
 
-            var successful = SearchRepository.RemoveSearchingRecord(referralCode);
+            var removedSuccessfully = SearchRepository.RemoveSearchingRecord(referralCode);
+
+            if (!removedSuccessfully)
+            {
+                return "Error Occurred.";
+            }
+
+            UserRepository.InsertTrackingRecord(referralCode, "User Stopped Searching", $"{referralCode} has cancelled search.");
+
+            return "Successfully Removed.";
         }
 
         [HttpPost("FindMatch")]
         public string[] FindMatch([FromBody] string referralCode)
         {
             var userFound = new string[2];
-            var validationPassOrFail = ValidationHelper.ValidateReferralCode(referralCode);
+            var validationPass = ValidationHelper.ValidateReferralCode(referralCode);
 
-            if (validationPassOrFail != "true") { return new[] { validationPassOrFail }; }
+            if (!validationPass) { return new string[] { "Invalid Referral Code" }; }
 
             if (!bool.Parse(UserRepository.CheckIfUserExists(referralCode)))
             {
                 return new[] { "Error. User does not exist." };
             }
+
+            //we will to write a function to ensure they are already searching just in case
 
             userFound = SearchRepository.CheckIfUserAlreadyMatched(referralCode);
 
@@ -98,6 +116,7 @@ namespace Earth2.io.Controllers
 
             //we will need to handle to the error strings that this function returns
             SearchRepository.InsertUserMatchedRecord(referralCode, matchedUserReferralCode);
+            UserRepository.InsertTrackingRecord(referralCode, "Found Match", $"{referralCode} has matched with {userFound[0]}.");
 
             return userFound;
         }

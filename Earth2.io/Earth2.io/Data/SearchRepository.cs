@@ -18,7 +18,7 @@ namespace Earth2.io.Data
             ConnectionString = connectionString;
         }
 
-        public static string InsertSearchingRecord(string referralCode)
+        public static bool InsertSearchingRecord(string referralCode)
         {
             try
             {
@@ -29,13 +29,15 @@ namespace Earth2.io.Data
 
                     var insertSearchCommand = $@"DECLARE @UserId uniqueidentifier;
 
-                                                Select @UserId = Id from AspNetUsers where Email = '{referralCode}'
+                                                Select @UserId = Id from AspNetUsers where Email = @referralCode
 
                                                 insert into UsersBuying
                                                 values(@UserId, GETDATE())";
 
                     using (var command = new SqlCommand(insertSearchCommand, SqlConnection))
                     {
+                        command.Parameters.AddWithValue("@referralCode", referralCode);
+
                         using (var reader = command.ExecuteReader())
                         {
                             while (reader.Read())
@@ -48,10 +50,11 @@ namespace Earth2.io.Data
             }
             catch (Exception e)
             {
-                return $"DB Call Failed in InsertSearchingRecord function in the insertSearchCommand: {e}";
+                ErrorRepository.LogError(referralCode, $"DB Call Failed in InsertSearchingRecord function in the insertSearchCommand: {e}");
+                return false;
             }
 
-            return "Buying Record Insert Succeeded.";
+            return true;
         }
 
         public static string[] FindAnotherUserSearching(string referralCode)
@@ -68,11 +71,13 @@ namespace Earth2.io.Data
 
                     var getSearchingCommand = $@"select top 1 Email, Username from UsersBuying 
                                                 join AspNetUsers on AspNetUsers.Id = UsersBuying.UserId
-                                                where AspNetUsers.Email <> '{referralCode}'
+                                                where AspNetUsers.Email <> @referralCode
                                                 order by CreatedOn desc";
 
                     using (var command = new SqlCommand(getSearchingCommand, SqlConnection))
                     {
+                        command.Parameters.AddWithValue("@referralCode", referralCode);
+
                         using (var reader = command.ExecuteReader())
                         {
                             while (reader.Read())
@@ -89,7 +94,8 @@ namespace Earth2.io.Data
             }
             catch (Exception e)
             {
-                return new[] { $"DB Call Failed in FindAnotherUserSearching function in the getSearchingCommand: {e}" };
+                ErrorRepository.LogError(referralCode, $"DB Call Failed in FindAnotherUserSearching function in the getSearchingCommand: {e}");
+                return new[] { "Error Occurred." };
             }
 
             return new[] { matchedUserReferralCode, matchedUserUsername};
@@ -122,7 +128,8 @@ namespace Earth2.io.Data
             }
             catch (Exception e)
             {
-                return $"DB Call Failed in GetNumberOfUsersSearching function in the getBuyingCountCommand: {e}";
+                ErrorRepository.LogError("Home Page", $"DB Call Failed in GetNumberOfUsersSearching function in the getBuyingCountCommand: {e}");
+                return "Error Occurred.";
             }
 
             return numberOfUsersBuying;
@@ -141,10 +148,12 @@ namespace Earth2.io.Data
 
                     var getAlreadySearchingCommand = $@"select * from AspNetUsers 
                                                     join UsersBuying on UsersBuying.UserId = AspNetUsers.Id
-                                                    where Email = '{referralCode}'";
+                                                    where Email = @referralCode";
 
                     using (var command = new SqlCommand(getAlreadySearchingCommand, SqlConnection))
                     {
+                        command.Parameters.AddWithValue("@referralCode", referralCode);
+
                         using (var reader = command.ExecuteReader())
                         {
                             while (reader.Read())
@@ -166,7 +175,7 @@ namespace Earth2.io.Data
             return alreadySearching;
         }
 
-        public static string RemoveSearchingRecord(string referralCode)
+        public static bool RemoveSearchingRecord(string referralCode)
         {
             try
             {
@@ -175,10 +184,12 @@ namespace Earth2.io.Data
                     SqlConnection.ConnectionString = ConnectionString;
                     SqlConnection.Open();
 
-                    var deleteSearchingCommand = $@"delete from UsersBuying where UserId in (select Id from AspNetUsers where Email = '{referralCode}')";
+                    var deleteSearchingCommand = $@"delete from UsersBuying where UserId in (select Id from AspNetUsers where Email = @referralCode)";
 
                     using (var command = new SqlCommand(deleteSearchingCommand, SqlConnection))
                     {
+                        command.Parameters.AddWithValue("@referralCode", referralCode);
+
                         using (var reader = command.ExecuteReader())
                         {
                             while (reader.Read())
@@ -191,10 +202,11 @@ namespace Earth2.io.Data
             }
             catch (Exception e)
             {
-                return $"DB Call Failed in RemoveSearchingRecord function in the deleteSearchingCommand: {e}";
+                ErrorRepository.LogError(referralCode, $"DB Call Failed in RemoveSearchingRecord function in the deleteSearchingCommand: {e}");
+                return false;
             }
 
-            return "true";
+            return true;
         }
 
         public static string RemoveBothSearchingRecords(string buyerReferralCode, string matchedBuyerReferralCode)
@@ -206,10 +218,13 @@ namespace Earth2.io.Data
                     SqlConnection.ConnectionString = ConnectionString;
                     SqlConnection.Open();
 
-                    var deleteSearchingCommand = $@"delete from UsersBuying where UserId in (select Id from AspNetUsers where Email in ('{buyerReferralCode}', '{matchedBuyerReferralCode}'))";
+                    var deleteSearchingCommand = $@"delete from UsersBuying where UserId in (select Id from AspNetUsers where Email in (@buyerReferralCode, @matchedBuyerReferralCode))";
 
                     using (var command = new SqlCommand(deleteSearchingCommand, SqlConnection))
                     {
+                        command.Parameters.AddWithValue("@buyerReferralCode", buyerReferralCode);
+                        command.Parameters.AddWithValue("@matchedBuyerReferralCode", matchedBuyerReferralCode);
+
                         using (var reader = command.ExecuteReader())
                         {
                             while (reader.Read())
@@ -240,17 +255,17 @@ namespace Earth2.io.Data
                     var insertMatchedCommand = $@"DECLARE @UserId uniqueidentifier;
                                                 DECLARE @UserMatchedId uniqueidentifier;
 
-                                                Select @UserId = Id from AspNetUsers where Email = '{referralCode}'
-                                                Select @UserMatchedId = Id from AspNetUsers where Email = '{userMatchedReferralCode}'
-
-                                                insert into UsersBuying
-                                                values(@UserId, GETDATE())
+                                                Select @UserId = Id from AspNetUsers where Email = @referralCode
+                                                Select @UserMatchedId = Id from AspNetUsers where Email = @userMatchedReferralCode
 
                                                 insert into UsersMatched
-                                                values('@UserId', '@UserMatchedId', GETDATE())";
+                                                values(@UserId, @UserMatchedId, GETDATE())";
 
                     using (var command = new SqlCommand(insertMatchedCommand, SqlConnection))
                     {
+                        command.Parameters.AddWithValue("@referralCode", referralCode);
+                        command.Parameters.AddWithValue("@userMatchedReferralCode", userMatchedReferralCode);
+
                         using (var reader = command.ExecuteReader())
                         {
                             while (reader.Read())
@@ -291,6 +306,8 @@ namespace Earth2.io.Data
 
                     using (var command = new SqlCommand(getAlreadyMatchedCommand, SqlConnection))
                     {
+                        command.Parameters.AddWithValue("@referralCode", referralCode);
+
                         using (var reader = command.ExecuteReader())
                         {
                             while (reader.Read())
@@ -313,14 +330,15 @@ namespace Earth2.io.Data
             }
             catch (Exception e)
             {
-                return new string[] { $"DB Call Failed in CheckIfUserAlreadyMatched function in the getAlreadyMatchedCommand: {e}" };
+                ErrorRepository.LogError(referralCode, $"DB Call Failed in CheckIfUserAlreadyMatched function in the getAlreadyMatchedCommand: {e}");
+                return new string[] { "Error Occurred." };
             }
 
             return new string[] { "User is not already matched." };
         }
 
         //this is called when the matched user finds out they were matched
-        public static string RemoveUserMatchedRecord(string userId)
+        public static bool RemoveUserMatchedRecord(string referralCode)
         {
             try
             {
@@ -329,10 +347,17 @@ namespace Earth2.io.Data
                     SqlConnection.ConnectionString = ConnectionString;
                     SqlConnection.Open();
 
-                    var deleteMatchedCommand = $@"delete from UsersMatched where UserMatchedWith = '{userId}'";
+                    var deleteMatchedCommand = $@"DECLARE @UserId uniqueidentifier;
+
+                                                  select @UserId = UserId from AspNetUsers
+                                                  where Email = @referralCode
+
+                                                  delete from UsersMatched where UserMatchedWith = @UserId";
 
                     using (var command = new SqlCommand(deleteMatchedCommand, SqlConnection))
                     {
+                        command.Parameters.AddWithValue("@referralCode", referralCode);
+
                         using (var reader = command.ExecuteReader())
                         {
                             while (reader.Read())
@@ -345,10 +370,11 @@ namespace Earth2.io.Data
             }
             catch (Exception e)
             {
-                return $"DB Call Failed in RemoveUserMatchedRecord function in the deleteMatchedCommand: {e}";
+                ErrorRepository.LogError(referralCode, $"DB Call Failed in RemoveUserMatchedRecord function in the deleteMatchedCommand: {e}");
+                return false;
             }
 
-            return "Matched Record Deleted Successfully";
+            return true;
         }
     }
 }

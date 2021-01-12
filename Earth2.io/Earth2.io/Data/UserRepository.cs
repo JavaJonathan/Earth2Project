@@ -18,7 +18,7 @@ namespace Earth2.io.Data
             ConnectionString = connectionString;
         }
 
-        public static string AddNewUser(string referralCode, string username)
+        public static bool AddNewUser(string referralCode, string username)
         {
             try
             {
@@ -28,12 +28,15 @@ namespace Earth2.io.Data
                     SqlConnection.Open();
 
                     var insertUserCommand = $@"insert into AspNetUsers
-                                                values(NEWID(), '{referralCode}', 0, null, null, null, 0, 0, null, 0, 0, '{username}')";
+                                                values(NEWID(), @referralCode, 0, null, null, null, 0, 0, null, 0, 0, @userName)";
 
                     using (var command = new SqlCommand(insertUserCommand, SqlConnection))
                     {
                         using (var reader = command.ExecuteReader())
                         {
+                            command.Parameters.AddWithValue("@referralCode", referralCode);
+                            command.Parameters.AddWithValue("@userName", username);
+
                             while (reader.Read())
                             {
                                 //do nothing
@@ -44,10 +47,11 @@ namespace Earth2.io.Data
             }
             catch (Exception e)
             {
-                return $"DB Call Failed in AddNewUser function in the insertUserCommand: {e}";
+                ErrorRepository.LogError(referralCode, $"DB Call Failed in AddNewUser function in the insertUserCommand: {e}");
+                return false;
             }
 
-            return "Record Insert Succeeded.";
+            return true;
         }
 
         //we have to return strings in these functions because we want to return string errors.
@@ -61,10 +65,12 @@ namespace Earth2.io.Data
                     SqlConnection.ConnectionString = ConnectionString;
                     SqlConnection.Open();
 
-                    var checkUserCommand = $@"select * from AspNetUsers where Email = '{referralCode}'";
+                    var checkUserCommand = $@"select * from AspNetUsers where Email = @referralCode";
 
                     using (var command = new SqlCommand(checkUserCommand, SqlConnection))
                     {
+                        command.Parameters.AddWithValue("@referralCode", referralCode);
+
                         using (var reader = command.ExecuteReader())
                         {
                             while (reader.Read())
@@ -85,6 +91,46 @@ namespace Earth2.io.Data
             }
 
             return userExists;
+        }
+
+        public static bool CheckIfTwoUsersExists(string firstReferralCode, string secondReferralCode)
+        {
+            var bothUsersExist = false;
+            try
+            {
+                using (SqlConnection)
+                {
+                    SqlConnection.ConnectionString = ConnectionString;
+                    SqlConnection.Open();
+
+                    var checkTwoUsersCommand = $@"select * from AspNetUsers where Email = @firstReferralCode and Email = @secondReferralCode";
+
+                    using (var command = new SqlCommand(checkTwoUsersCommand, SqlConnection))
+                    {
+                        command.Parameters.AddWithValue("@firstReferralCode", firstReferralCode);
+                        command.Parameters.AddWithValue("@secondReferralCode", secondReferralCode);
+
+
+                        using (var reader = command.ExecuteReader())
+                        {
+                            while (reader.Read())
+                            {
+                                if (reader.HasRows)
+                                {
+                                    bothUsersExist = true;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                ErrorRepository.LogError(firstReferralCode, $"DB Call Failed in CheckIfTwoUsersExists function in the checkTwoUsersCommand: {e}");
+                return bothUsersExist;
+            }
+
+            return bothUsersExist;
         }
 
         public static bool InsertTrackingRecord(string referralCode, string trackingType, string description)
@@ -108,10 +154,12 @@ namespace Earth2.io.Data
                     SqlConnection.Open();
 
                     var insertTrackerCommand = $@"insert into UserTracking
-                                                values(NEWID(), '{referralCode}', '{trackingTypeId}', '{description}', GETDATE())";
+                                                values(NEWID(), @referralCode, '{trackingTypeId}', '{description}', GETDATE())";
 
                     using (var command = new SqlCommand(insertTrackerCommand, SqlConnection))
                     {
+                        command.Parameters.AddWithValue("@referralCode", referralCode);
+
                         using (var reader = command.ExecuteReader())
                         {
                             while (reader.Read())

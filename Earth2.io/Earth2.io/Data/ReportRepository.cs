@@ -18,7 +18,7 @@ namespace Earth2.io.Data
             ConnectionString = connectionString;
         }
 
-        public static string InsertReportRecord(string userReportingId, string userBeingReportedId)
+        public static bool InsertReportRecord(string reportingReferralCode, string reportedReferralCode)
         {
             try
             {
@@ -27,11 +27,20 @@ namespace Earth2.io.Data
                     SqlConnection.ConnectionString = ConnectionString;
                     SqlConnection.Open();
 
-                    var insertReportCommand = $@"insert into UsersReported
-                                                values('{userBeingReportedId}', '{userReportingId}', GETDATE())";
+                    var insertReportCommand = $@"DECLARE @ReportingUserId uniqueidentifier;
+                                                DECLARE @ReportedUserId uniqueidentifier;
+
+                                                Select @ReportingUserId = Id from AspNetUsers where Email = @reportingReferralCode
+                                                Select @ReportedUserId = Id from AspNetUsers where Email = @reportedReferralCode
+
+                                                insert into UsersReported
+                                                values(@ReportingUserId, @ReportedUserId, GETDATE())";
 
                     using (var command = new SqlCommand(insertReportCommand, SqlConnection))
                     {
+                        command.Parameters.AddWithValue("@reportingReferralCode", reportingReferralCode);
+                        command.Parameters.AddWithValue("@reportedReferralCode", reportedReferralCode);
+
                         using (var reader = command.ExecuteReader())
                         {
                             while (reader.Read())
@@ -44,13 +53,14 @@ namespace Earth2.io.Data
             }
             catch (Exception e)
             {
-                return $"DB Call Failed in InsertReportRecord function in the insertReportCommand: {e}";
+                ErrorRepository.LogError(reportingReferralCode, $"DB Call Failed in InsertReportRecord function in the insertReportCommand: {e}");
+                return false;
             }
 
-            return "Record Insert Succeeded.";
+            return true;
         }
 
-        public static string GetNumberOfReportsByUser(string userId)
+        public static string GetNumberOfReportsByUser(string referralCode)
         {
             var timesReported = "";
 
@@ -61,10 +71,16 @@ namespace Earth2.io.Data
                     SqlConnection.ConnectionString = ConnectionString;
                     SqlConnection.Open();
 
-                    var getReportsCommand = $@"select count(*) from UsersReported where UserReported = '{userId}'";
+                    var getReportsCommand = $@"DECLARE @UserId uniqueidentifier;
+
+                                            Select @UserId = Id from AspNetUsers where Email = @referralCode
+
+                                            select count(*) from UsersReported where UserReported = @UserId";
 
                     using (var command = new SqlCommand(getReportsCommand, SqlConnection))
                     {
+                        command.Parameters.AddWithValue("@referralCode", referralCode);
+
                         using (var reader = command.ExecuteReader())
                         {
                             while (reader.Read())
@@ -77,13 +93,14 @@ namespace Earth2.io.Data
             }
             catch (Exception e)
             {
-                return $"DB Call Failed in GetNumberOfReportsByUser function in the getReportsCommand: {e}";
+                ErrorRepository.LogError(referralCode, $"DB Call Failed in GetNumberOfReportsByUser function in the getReportsCommand: {e}");
+                return "Error Occurred.";
             }
 
             return timesReported;
         }
 
-        public static string InsertBanRecord(string userId)
+        public static bool InsertBanRecord(string referralCode)
         {
             try
             {
@@ -92,11 +109,17 @@ namespace Earth2.io.Data
                     SqlConnection.ConnectionString = ConnectionString;
                     SqlConnection.Open();
 
-                    var banUserCommand = $@"insert into BannedUsers
-                                            values('{userId}', GETDATE())";
+                    var banUserCommand = $@"DECLARE @UserId uniqueidentifier;
+
+                                            Select @UserId = Id from AspNetUsers where Email = @referralCode
+
+                                            insert into BannedUsers
+                                            values(@UserId, GETDATE())";
 
                     using (var command = new SqlCommand(banUserCommand, SqlConnection))
                     {
+                        command.Parameters.AddWithValue("@referralCode", referralCode);
+
                         using (var reader = command.ExecuteReader())
                         {
                             while (reader.Read())
@@ -109,10 +132,56 @@ namespace Earth2.io.Data
             }
             catch (Exception e)
             {
-                return $"DB Call Failed in InsertBanRecord function in the banUserCommand: {e}";
+                ErrorRepository.LogError(referralCode, $"DB Call Failed in InsertBanRecord function in the banUserCommand: {e}");
+                return false;
             }
 
-            return $"{userId} has successfully be inserted into the banned table.";
+            return true;
+        }
+
+        //we need this function to ensure a user can only report another once
+        public static string CheckIfUserIsAlreadyReportedByUser(string reportingReferralCode, string reportedReferralCode)
+        {
+            try
+            {
+                using (SqlConnection)
+                {
+                    SqlConnection.ConnectionString = ConnectionString;
+                    SqlConnection.Open();
+
+                    var checkReportCommand = $@"DECLARE @ReportingUserId uniqueidentifier;
+                                                DECLARE @ReportedUserId uniqueidentifier;
+
+                                                Select @ReportingUserId = Id from AspNetUsers where Email = @reportingReferralCode
+                                                Select @ReportedUserId = Id from AspNetUsers where Email = @reportedReferralCode
+
+                                                select * from UsersReported where ReportedBy = @reportingReferralCode and UserReported = @reportedReferralCode";
+
+                    using (var command = new SqlCommand(checkReportCommand, SqlConnection))
+                    {
+                        command.Parameters.AddWithValue("@reportingReferralCode", reportingReferralCode);
+                        command.Parameters.AddWithValue("@reportedReferralCode", reportedReferralCode);
+
+                        using (var reader = command.ExecuteReader())
+                        {
+                            while (reader.Read())
+                            {
+                                if (reader.HasRows)
+                                {
+                                    return "true";
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                ErrorRepository.LogError(reportingReferralCode, $"DB Call Failed in CheckIfUserIsAlreadyReportedByUser function in the checkReportCommand: {e}");
+                return "Error Occurred.";
+            }
+
+            return "false";
         }
     }    
 }
