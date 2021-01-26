@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Data;
 using System.Data.SqlClient;
 using System.Linq;
 using System.Threading.Tasks;
@@ -11,6 +12,9 @@ namespace Earth2.io.Data
         private static SqlConnection SqlConnection { get; set; }
         private static string ConnectionString { get; set; }
 
+        ErrorRepository errorRepository;
+
+
         //this is called on start up
         public static void SetConnection(string connectionString)
         {
@@ -18,8 +22,9 @@ namespace Earth2.io.Data
             ConnectionString = connectionString;
         }
 
-        public static bool InsertSearchingRecord(string referralCode)
+        public bool InsertSearchingRecord(string referralCode)
         {
+            errorRepository = new ErrorRepository();
             try
             {
                 using (SqlConnection)
@@ -36,7 +41,8 @@ namespace Earth2.io.Data
 
                     using (var command = new SqlCommand(insertSearchCommand, SqlConnection))
                     {
-                        command.Parameters.AddWithValue("@referralCode", referralCode);
+                        command.Parameters.Add("@referralCode", SqlDbType.VarChar);
+                        command.Parameters["@referralCode"].Value = referralCode;
 
                         using (var reader = command.ExecuteReader())
                         {
@@ -50,15 +56,16 @@ namespace Earth2.io.Data
             }
             catch (Exception e)
             {
-                ErrorRepository.LogError(referralCode, $"DB Call Failed in InsertSearchingRecord function in the insertSearchCommand: {e}");
+                errorRepository.LogError(referralCode, $"DB Call Failed in InsertSearchingRecord function in the insertSearchCommand: {e}");
                 return false;
             }
 
             return true;
         }
 
-        public static string[] FindAnotherUserSearching(string referralCode)
+        public string[] FindAnotherUserSearching(string referralCode)
         {
+            errorRepository = new ErrorRepository();
             var matchedUserReferralCode = "";
             var matchedUserUsername = "";
 
@@ -76,7 +83,8 @@ namespace Earth2.io.Data
 
                     using (var command = new SqlCommand(getSearchingCommand, SqlConnection))
                     {
-                        command.Parameters.AddWithValue("@referralCode", referralCode);
+                        command.Parameters.Add("@referralCode", SqlDbType.VarChar);
+                        command.Parameters["@referralCode"].Value = referralCode;
 
                         using (var reader = command.ExecuteReader())
                         {
@@ -94,15 +102,16 @@ namespace Earth2.io.Data
             }
             catch (Exception e)
             {
-                ErrorRepository.LogError(referralCode, $"DB Call Failed in FindAnotherUserSearching function in the getSearchingCommand: {e}");
+                errorRepository.LogError(referralCode, $"DB Call Failed in FindAnotherUserSearching function in the getSearchingCommand: {e}");
                 return new[] { "Error Occurred." };
             }
 
             return new[] { matchedUserReferralCode, matchedUserUsername};
         }
 
-        public static string GetNumberOfUsersSearching()
+        public string GetNumberOfUsersSearching()
         {
+            errorRepository = new ErrorRepository();
             var numberOfUsersBuying = "";
 
             try
@@ -128,15 +137,16 @@ namespace Earth2.io.Data
             }
             catch (Exception e)
             {
-                ErrorRepository.LogError("Home Page", $"DB Call Failed in GetNumberOfUsersSearching function in the getBuyingCountCommand: {e}");
+                errorRepository.LogError("Home Page", $"DB Call Failed in GetNumberOfUsersSearching function in the getBuyingCountCommand: {e}");
                 return "Error Occurred.";
             }
 
             return numberOfUsersBuying;
         }
 
-        public static string CheckIfUserIsAlreadySearching(string referralCode)
+        public string CheckIfUserIsAlreadySearching(string referralCode)
         {
+            errorRepository = new ErrorRepository();
             var alreadySearching = "false";
 
             try
@@ -152,7 +162,8 @@ namespace Earth2.io.Data
 
                     using (var command = new SqlCommand(getAlreadySearchingCommand, SqlConnection))
                     {
-                        command.Parameters.AddWithValue("@referralCode", referralCode);
+                        command.Parameters.Add("@referralCode", SqlDbType.VarChar);
+                        command.Parameters["@referralCode"].Value = referralCode;
 
                         using (var reader = command.ExecuteReader())
                         {
@@ -169,14 +180,17 @@ namespace Earth2.io.Data
             }
             catch (Exception e)
             {
-                return $"DB Call Failed in CheckIfUserIsAlreadySearching function in the getAlreadySearchingCommand: {e}";
+                errorRepository.LogError(referralCode, $"DB Call Failed in CheckIfUserIsAlreadySearching function in the getAlreadySearchingCommand: { e }");
+                return $"";
             }
 
             return alreadySearching;
         }
 
-        public static bool RemoveSearchingRecord(string referralCode)
+        public bool RemoveSearchingRecord(string referralCode)
         {
+            errorRepository = new ErrorRepository();
+
             try
             {
                 using (SqlConnection)
@@ -202,15 +216,17 @@ namespace Earth2.io.Data
             }
             catch (Exception e)
             {
-                ErrorRepository.LogError(referralCode, $"DB Call Failed in RemoveSearchingRecord function in the deleteSearchingCommand: {e}");
+                errorRepository.LogError(referralCode, $"DB Call Failed in RemoveSearchingRecord function in the deleteSearchingCommand: {e}");
                 return false;
             }
 
             return true;
         }
 
-        public static string RemoveBothSearchingRecords(string buyerReferralCode, string matchedBuyerReferralCode)
+        public string RemoveBothSearchingRecords(string buyerReferralCode, string matchedBuyerReferralCode)
         {
+            errorRepository = new ErrorRepository();
+
             try
             {
                 using (SqlConnection)
@@ -243,8 +259,10 @@ namespace Earth2.io.Data
             return "Records Deleted Successfully";
         }
 
-        public static string InsertUserMatchedRecord(string referralCode, string userMatchedReferralCode)
+        public string InsertUserMatchedRecord(string referralCode, string userMatchedReferralCode)
         {
+            errorRepository = new ErrorRepository();
+
             try
             {
                 using (SqlConnection)
@@ -286,8 +304,10 @@ namespace Earth2.io.Data
 
         //we will need to call this right beofre we start searching for users then another when we find a possible match 
         //we will need to check if thereis more than one record here, if so, there was a race con
-        public static string[] CheckIfUserAlreadyMatched(string referralCode)
+        public string[] CheckIfUserAlreadyMatched(string referralCode)
         {
+            errorRepository = new ErrorRepository();
+
             try
             {
                 using (SqlConnection)
@@ -330,7 +350,7 @@ namespace Earth2.io.Data
             }
             catch (Exception e)
             {
-                ErrorRepository.LogError(referralCode, $"DB Call Failed in CheckIfUserAlreadyMatched function in the getAlreadyMatchedCommand: {e}");
+                errorRepository.LogError(referralCode, $"DB Call Failed in CheckIfUserAlreadyMatched function in the getAlreadyMatchedCommand: {e}");
                 return new string[] { "Error Occurred." };
             }
 
@@ -338,8 +358,10 @@ namespace Earth2.io.Data
         }
 
         //this is called when the matched user finds out they were matched
-        public static bool RemoveUserMatchedRecord(string referralCode)
+        public bool RemoveUserMatchedRecord(string referralCode)
         {
+            errorRepository = new ErrorRepository();
+
             try
             {
                 using (SqlConnection)
@@ -370,7 +392,7 @@ namespace Earth2.io.Data
             }
             catch (Exception e)
             {
-                ErrorRepository.LogError(referralCode, $"DB Call Failed in RemoveUserMatchedRecord function in the deleteMatchedCommand: {e}");
+                errorRepository.LogError(referralCode, $"DB Call Failed in RemoveUserMatchedRecord function in the deleteMatchedCommand: {e}");
                 return false;
             }
 

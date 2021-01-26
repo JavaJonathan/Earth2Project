@@ -24,18 +24,23 @@ namespace Earth2.io.Models
             return true;
         }
 
-        public static string CheckIfUserIsBanned(string referralCode)
+        public void BanUserIfNeeded(string referralCode)
         {
-            var timesReported = ReportRepository.GetNumberOfReportsByUser(referralCode);
-            if (timesReported == "Error Occurred.") { return "Error Occurred."; }
-            if(int.Parse(timesReported) > 3) return "true";
+            ReportRepository reportRepository = new ReportRepository();
+            UserRepository userRepository = new UserRepository();
 
-            return "false";
+            var timesReported = reportRepository.GetNumberOfReportsByUser(referralCode);
+            if (timesReported == "Error Occurred.") { return; }
+            if (int.Parse(timesReported) > 3)
+            {
+                reportRepository.InsertBanRecord(referralCode);
+                userRepository.InsertTrackingRecord(referralCode, "User Banned", $"{referralCode} has been banned.");
+            }
         }
 
-        public static bool IsDDOSAttack(IPAddress ip)
-        {
-
-        }
+        //public static bool CanUserBeReportedYet()
+        //{
+        //    return false;
+        //}
     }
 }

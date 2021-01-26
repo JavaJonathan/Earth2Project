@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Data;
 using System.Data.SqlClient;
 using System.Linq;
 using System.Threading.Tasks;
@@ -18,7 +19,7 @@ namespace Earth2.io.Data
             ConnectionString = connectionString;
         }
 
-        public static string LogError(string referralCode, string error)
+        public string LogError(string referralCode, string error)
         {
             try
             {
@@ -32,7 +33,8 @@ namespace Earth2.io.Data
 
                     using (var command = new SqlCommand(insertErrorCommand, SqlConnection))
                     {
-                        command.Parameters.AddWithValue("@referralCode", referralCode);
+                        command.Parameters.Add("@referralCode", SqlDbType.VarChar);
+                        command.Parameters["@referralCode"].Value = referralCode;
 
                         using (var reader = command.ExecuteReader())
                         {
@@ -52,7 +54,7 @@ namespace Earth2.io.Data
             return "Error Logged Successfully";
         }
 
-        public static bool LogIpAndCheckForDDOS(string ipAddress)
+        public bool LogIpAndCheckForDDOS(string ipAddress)
         {
             var tooManyRequests = false;
             try
@@ -71,7 +73,8 @@ namespace Earth2.io.Data
 
                     using (var command = new SqlCommand(insertErrorCommand, SqlConnection))
                     {
-                        command.Parameters.AddWithValue("@ipAddress", ipAddress);
+                        command.Parameters.Add("@ipAddress", SqlDbType.VarChar);
+                        command.Parameters["@ipAddress"].Value = ipAddress;
 
                         using (var reader = command.ExecuteReader())
                         {
@@ -92,7 +95,7 @@ namespace Earth2.io.Data
             }
             catch (Exception e)
             {
-                ErrorRepository.LogError("DDoS Check", $"DB Call Failed in LogError function in the insertErrorCommand: {e}");
+                LogError("DDoS Check", $"DB Call Failed in LogError function in the insertErrorCommand: {e}");
                 return tooManyRequests;
             }
 

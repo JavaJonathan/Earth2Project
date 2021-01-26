@@ -5,118 +5,145 @@ using System.Text.Encodings.Web;
 using System.Threading.Tasks;
 using Earth2.io.Data;
 using Earth2.io.Models;
+using Microsoft.AspNetCore.Cors;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Newtonsoft.Json.Linq;
 
 namespace Earth2.io.Controllers
 {
-    [Route("api/[controller]")]
+    [DisableCors]
+    [Route("api/")]
     [ApiController]
     public class SearchController : ControllerBase
     {
+        SearchRepository searchRepository;
+        ErrorRepository errorRepository;
+        ReportRepository reportRepository;
+        UserRepository userRepository;
+
         // POST api/values
         [HttpPost("Start")]
-        public string StartSearch([FromBody] string jsonUserObject)
+        public string StartSearch([FromBody] JObject jsonUserObject)
         {
-            var userObject = JObject.Parse(jsonUserObject);
+            var ip = HttpContext.Connection.RemoteIpAddress;
 
-            var referralCode = userObject["referralCode"]?.ToString();
-            var userName = userObject["userName"]?.ToString();
+            searchRepository = new SearchRepository();
+            errorRepository = new ErrorRepository();
+            reportRepository = new ReportRepository();
+            userRepository = new UserRepository();
+
+            errorRepository.LogIpAndCheckForDDOS(ip.ToString());
+
+            var referralCode = jsonUserObject["referralCode"]?.ToString();
+            var userName = jsonUserObject["userName"]?.ToString();
 
             var validationPass = ValidationHelper.ValidateReferralCode(referralCode);
 
             if (!validationPass) { return "Invalid Referral Code"; }
 
-            var isUserBanned = ValidationHelper.CheckIfUserIsBanned(referralCode);
+            var userBanned = reportRepository.IsUserBanned(referralCode);
 
-            switch (isUserBanned)
+            if (userBanned) { return "User is banned."; }
+
+            if (!bool.Parse(userRepository.CheckIfUserExists(referralCode)))
             {
-                case "true": return "User is banned.";
-                case "Error Occurred.": return "Error Occurred.";
+                userRepository.AddNewUser(referralCode, userName);
             }
 
-            userName = HtmlEncoder.Create().Encode(userName);
-
-            if (!bool.Parse(UserRepository.CheckIfUserExists(referralCode)))
-            {
-                UserRepository.AddNewUser(referralCode, userName);
-            }
-
-            if (bool.Parse(SearchRepository.CheckIfUserIsAlreadySearching(referralCode)))
+            if (bool.Parse(searchRepository.CheckIfUserIsAlreadySearching(referralCode)))
             {
                 return "Error. User is already searching.";
             }
 
-            SearchRepository.InsertSearchingRecord(referralCode);
-            UserRepository.InsertTrackingRecord(referralCode, "Started Searching", $"{referralCode} has started searching.");
+            searchRepository.InsertSearchingRecord(referralCode);
+            userRepository.InsertTrackingRecord(referralCode, "Started Searching", $"{referralCode} has started searching.");
 
             return "User is successfully searching.";
         }
 
         [HttpPost("StopSearch")]
-        public string StopSearch([FromBody] string referralCode)
+        public string StopSearch([FromBody] JObject JsonReferralCode)
         {
+            var referralCode = JsonReferralCode["referralCode"]?.ToString();
+            var ip = HttpContext.Connection.RemoteIpAddress;
+
+            searchRepository = new SearchRepository();
+            errorRepository = new ErrorRepository();
+            userRepository = new UserRepository();
+
+
+            errorRepository.LogIpAndCheckForDDOS(ip.ToString());
+
             var validationPass = ValidationHelper.ValidateReferralCode(referralCode);
 
             if (!validationPass) { return "Invalid Referral Code"; }
 
-            if (!bool.Parse(UserRepository.CheckIfUserExists(referralCode)))
+            if (!bool.Parse(userRepository.CheckIfUserExists(referralCode)))
             {
                 return "Error. User does not exist.";
             }
 
-            var removedSuccessfully = SearchRepository.RemoveSearchingRecord(referralCode);
+            var removedSuccessfully = searchRepository.RemoveSearchingRecord(referralCode);
 
             if (!removedSuccessfully)
             {
                 return "Error Occurred.";
             }
 
-            UserRepository.InsertTrackingRecord(referralCode, "User Stopped Searching", $"{referralCode} has cancelled search.");
+            userRepository.InsertTrackingRecord(referralCode, "User Stopped Searching", $"{referralCode} has cancelled search.");
 
             return "Successfully Removed.";
         }
 
         [HttpPost("FindMatch")]
-        public string[] FindMatch([FromBody] string referralCode)
+        public string[] FindMatch([FromBody] JObject JsonReferralCode)
         {
+            var referralCode = JsonReferralCode["referralCode"]?.ToString();
+            var ip = HttpContext.Connection.RemoteIpAddress;
+
+            searchRepository = new SearchRepository();
+            errorRepository = new ErrorRepository();
+            userRepository = new UserRepository();
+
+            errorRepository.LogIpAndCheckForDDOS(ip.ToString());
+
             var userFound = new string[2];
+
             var validationPass = ValidationHelper.ValidateReferralCode(referralCode);
 
             if (!validationPass) { return new string[] { "Invalid Referral Code" }; }
 
-            if (!bool.Parse(UserRepository.CheckIfUserExists(referralCode)))
+            if (!bool.Parse(userRepository.CheckIfUserExists(referralCode)))
             {
                 return new[] { "Error. User does not exist." };
             }
 
             //we will to write a function to ensure they are already searching just in case
 
-            userFound = SearchRepository.CheckIfUserAlreadyMatched(referralCode);
+            userFound = searchRepository.CheckIfUserAlreadyMatched(referralCode);
 
-            //checkifuseralreadymatched will return an array either with the referralCode and username or a reason why a that value was returned
+            //checkifuseralreadymatched will return an array either with the referralCode and username or a reason why that value was not returned
             if (userFound.Length == 2)
             {
                 return userFound;
             }
-            //we weill need to write some else if blocks or log the errors in the DB
 
-            userFound = SearchRepository.FindAnotherUserSearching(referralCode);
+            userFound = searchRepository.FindAnotherUserSearching(referralCode);
             var matchedUserReferralCode = userFound[0];
 
-            //findAnotherUserSearching returns an array of emtpy strings if no user if found
-            if (matchedUserReferralCode == "")
+            //findAnotherUserSearching returns an array of empty strings if no user if found
+            if (matchedUserReferralCode == "" || matchedUserReferralCode == "Error Occurred.")
             {
                 return new[] { "No match found yet." };
             }
 
             //we will need to handle to the error strings that this function returns
-            SearchRepository.RemoveBothSearchingRecords(referralCode, matchedUserReferralCode);
+            searchRepository.RemoveBothSearchingRecords(referralCode, matchedUserReferralCode);
 
             //we will need to handle to the error strings that this function returns
-            SearchRepository.InsertUserMatchedRecord(referralCode, matchedUserReferralCode);
-            UserRepository.InsertTrackingRecord(referralCode, "Found Match", $"{referralCode} has matched with {userFound[0]}.");
+            searchRepository.InsertUserMatchedRecord(referralCode, matchedUserReferralCode);
+            userRepository.InsertTrackingRecord(referralCode, "Found Match", $"{referralCode} has matched with {userFound[0]}.");
 
             return userFound;
         }
@@ -124,7 +151,14 @@ namespace Earth2.io.Controllers
         [HttpGet("GetNumberOfUsers")]
         public string GetNumberOfUsersSearching()
         {
-            return SearchRepository.GetNumberOfUsersSearching();
+            var ip = HttpContext.Connection.RemoteIpAddress;
+
+            searchRepository = new SearchRepository();
+            errorRepository = new ErrorRepository();
+
+            errorRepository.LogIpAndCheckForDDOS(ip.ToString());
+
+            return searchRepository.GetNumberOfUsersSearching();
         }
     }
 }

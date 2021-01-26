@@ -10,6 +10,8 @@ namespace Earth2.io.Data
     {
         private static SqlConnection SqlConnection { get; set; }
         private static string ConnectionString { get; set; }
+        ErrorRepository errorRepository;
+
 
         //this is called on start up
         public static void SetConnection(string connectionString)
@@ -18,8 +20,9 @@ namespace Earth2.io.Data
             ConnectionString = connectionString;
         }
 
-        public static bool InsertReportRecord(string reportingReferralCode, string reportedReferralCode)
+        public bool InsertReportRecord(string reportingReferralCode, string reportedReferralCode)
         {
+            errorRepository = new ErrorRepository();
             try
             {
                 using (SqlConnection)
@@ -53,16 +56,17 @@ namespace Earth2.io.Data
             }
             catch (Exception e)
             {
-                ErrorRepository.LogError(reportingReferralCode, $"DB Call Failed in InsertReportRecord function in the insertReportCommand: {e}");
+                errorRepository.LogError(reportingReferralCode, $"DB Call Failed in InsertReportRecord function in the insertReportCommand: {e}");
                 return false;
             }
 
             return true;
         }
 
-        public static string GetNumberOfReportsByUser(string referralCode)
+        public string GetNumberOfReportsByUser(string referralCode)
         {
             var timesReported = "";
+            errorRepository = new ErrorRepository();
 
             try
             {
@@ -93,15 +97,17 @@ namespace Earth2.io.Data
             }
             catch (Exception e)
             {
-                ErrorRepository.LogError(referralCode, $"DB Call Failed in GetNumberOfReportsByUser function in the getReportsCommand: {e}");
+                errorRepository.LogError(referralCode, $"DB Call Failed in GetNumberOfReportsByUser function in the getReportsCommand: {e}");
                 return "Error Occurred.";
             }
 
             return timesReported;
         }
 
-        public static bool InsertBanRecord(string referralCode)
+        public bool InsertBanRecord(string referralCode)
         {
+            errorRepository = new ErrorRepository();
+
             try
             {
                 using (SqlConnection)
@@ -132,7 +138,7 @@ namespace Earth2.io.Data
             }
             catch (Exception e)
             {
-                ErrorRepository.LogError(referralCode, $"DB Call Failed in InsertBanRecord function in the banUserCommand: {e}");
+                errorRepository.LogError(referralCode, $"DB Call Failed in InsertBanRecord function in the banUserCommand: {e}");
                 return false;
             }
 
@@ -140,8 +146,10 @@ namespace Earth2.io.Data
         }
 
         //we need this function to ensure a user can only report another once
-        public static string CheckIfUserIsAlreadyReportedByUser(string reportingReferralCode, string reportedReferralCode)
+        public string CheckIfUserIsAlreadyReportedByUser(string reportingReferralCode, string reportedReferralCode)
         {
+            errorRepository = new ErrorRepository();
+
             try
             {
                 using (SqlConnection)
@@ -177,11 +185,54 @@ namespace Earth2.io.Data
             }
             catch (Exception e)
             {
-                ErrorRepository.LogError(reportingReferralCode, $"DB Call Failed in CheckIfUserIsAlreadyReportedByUser function in the checkReportCommand: {e}");
+                errorRepository.LogError(reportingReferralCode, $"DB Call Failed in CheckIfUserIsAlreadyReportedByUser function in the checkReportCommand: {e}");
                 return "Error Occurred.";
             }
 
             return "false";
+        }
+
+        public bool IsUserBanned(string referralCode)
+        {
+            errorRepository = new ErrorRepository();
+
+            try
+            {
+                using (SqlConnection)
+                {
+                    SqlConnection.ConnectionString = ConnectionString;
+                    SqlConnection.Open();
+
+                    var getBannedUserCommand = $@"DECLARE @UserId uniqueidentifier;
+
+                                            Select @UserId = Id from AspNetUsers where Email = @referralCode
+
+                                            select * from BannedUsers where UserId = @UserId)";
+
+                    using (var command = new SqlCommand(getBannedUserCommand, SqlConnection))
+                    {
+                        command.Parameters.AddWithValue("@referralCode", referralCode);
+
+                        using (var reader = command.ExecuteReader())
+                        {
+                            while (reader.Read())
+                            {
+                                if (reader.HasRows)
+                                {
+                                    return true;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                errorRepository.LogError(referralCode, $"DB Call Failed in IsUserBanned function in the getBannedUserCommand: {e}");
+                return false;
+            }
+
+            return false;
         }
     }    
 }

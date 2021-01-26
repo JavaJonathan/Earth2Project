@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Data;
 using System.Data.SqlClient;
 using System.Linq;
 using System.Threading.Tasks;
@@ -10,6 +11,7 @@ namespace Earth2.io.Data
     {
         private static SqlConnection SqlConnection { get; set; }
         private static string ConnectionString { get; set; }
+        ErrorRepository errorRepository;
 
         //this is called on start up
         public static void SetConnection(string connectionString)
@@ -18,8 +20,10 @@ namespace Earth2.io.Data
             ConnectionString = connectionString;
         }
 
-        public static bool AddNewUser(string referralCode, string username)
+        public bool AddNewUser(string referralCode, string username)
         {
+            errorRepository = new ErrorRepository();
+
             try
             {
                 using (SqlConnection)
@@ -32,11 +36,14 @@ namespace Earth2.io.Data
 
                     using (var command = new SqlCommand(insertUserCommand, SqlConnection))
                     {
+                        command.Parameters.Add("@referralCode", SqlDbType.VarChar);
+                        command.Parameters["@referralCode"].Value = referralCode;
+
+                        command.Parameters.Add("@userName", SqlDbType.VarChar);
+                        command.Parameters["@userName"].Value = username;
+
                         using (var reader = command.ExecuteReader())
                         {
-                            command.Parameters.AddWithValue("@referralCode", referralCode);
-                            command.Parameters.AddWithValue("@userName", username);
-
                             while (reader.Read())
                             {
                                 //do nothing
@@ -47,7 +54,7 @@ namespace Earth2.io.Data
             }
             catch (Exception e)
             {
-                ErrorRepository.LogError(referralCode, $"DB Call Failed in AddNewUser function in the insertUserCommand: {e}");
+                errorRepository.LogError(referralCode, $"DB Call Failed in AddNewUser function in the insertUserCommand: {e}");
                 return false;
             }
 
@@ -55,9 +62,11 @@ namespace Earth2.io.Data
         }
 
         //we have to return strings in these functions because we want to return string errors.
-        public static string CheckIfUserExists(string referralCode)
+        public string CheckIfUserExists(string referralCode)
         {
             var userExists = "false";
+            errorRepository = new ErrorRepository();
+
             try
             {
                 using (SqlConnection)
@@ -69,7 +78,8 @@ namespace Earth2.io.Data
 
                     using (var command = new SqlCommand(checkUserCommand, SqlConnection))
                     {
-                        command.Parameters.AddWithValue("@referralCode", referralCode);
+                        command.Parameters.Add("@referralCode", SqlDbType.VarChar);
+                        command.Parameters["@referralCode"].Value = referralCode;
 
                         using (var reader = command.ExecuteReader())
                         {
@@ -86,16 +96,18 @@ namespace Earth2.io.Data
             }
             catch (Exception e)
             {
-                ErrorRepository.LogError(referralCode, $"DB Call Failed in CheckIfUserExists function in the checkUserCommand: {e}");
+                errorRepository.LogError(referralCode, $"DB Call Failed in CheckIfUserExists function in the checkUserCommand: {e}");
                 return "Error Occurred.";
             }
 
             return userExists;
         }
 
-        public static bool CheckIfTwoUsersExists(string firstReferralCode, string secondReferralCode)
+        public bool CheckIfTwoUsersExists(string firstReferralCode, string secondReferralCode)
         {
             var bothUsersExist = false;
+            errorRepository = new ErrorRepository();
+
             try
             {
                 using (SqlConnection)
@@ -107,8 +119,11 @@ namespace Earth2.io.Data
 
                     using (var command = new SqlCommand(checkTwoUsersCommand, SqlConnection))
                     {
-                        command.Parameters.AddWithValue("@firstReferralCode", firstReferralCode);
-                        command.Parameters.AddWithValue("@secondReferralCode", secondReferralCode);
+                        command.Parameters.Add("@firstReferralCode", SqlDbType.VarChar);
+                        command.Parameters["@firstReferralCode"].Value = firstReferralCode;
+
+                        command.Parameters.Add("@secondReferralCode", SqlDbType.VarChar);
+                        command.Parameters["@secondReferralCode"].Value = secondReferralCode;
 
 
                         using (var reader = command.ExecuteReader())
@@ -126,16 +141,17 @@ namespace Earth2.io.Data
             }
             catch (Exception e)
             {
-                ErrorRepository.LogError(firstReferralCode, $"DB Call Failed in CheckIfTwoUsersExists function in the checkTwoUsersCommand: {e}");
+                errorRepository.LogError(firstReferralCode, $"DB Call Failed in CheckIfTwoUsersExists function in the checkTwoUsersCommand: {e}");
                 return bothUsersExist;
             }
 
             return bothUsersExist;
         }
 
-        public static bool InsertTrackingRecord(string referralCode, string trackingType, string description)
+        public bool InsertTrackingRecord(string referralCode, string trackingType, string description)
         {
             var trackingTypeId = "";
+            errorRepository = new ErrorRepository();
 
             switch (trackingType)
             {
@@ -158,7 +174,8 @@ namespace Earth2.io.Data
 
                     using (var command = new SqlCommand(insertTrackerCommand, SqlConnection))
                     {
-                        command.Parameters.AddWithValue("@referralCode", referralCode);
+                        command.Parameters.Add("@referralCode", SqlDbType.VarChar);
+                        command.Parameters["@referralCode"].Value = referralCode;
 
                         using (var reader = command.ExecuteReader())
                         {
@@ -172,7 +189,7 @@ namespace Earth2.io.Data
             }
             catch (Exception e)
             {
-                ErrorRepository.LogError(referralCode, $"DB Call Failed in InsertTrackingRecord function in the insertTrackerCommand: {e}");
+                errorRepository.LogError(referralCode, $"DB Call Failed in InsertTrackingRecord function in the insertTrackerCommand: {e}");
                 return false;
             }
 

@@ -16,6 +16,8 @@ namespace Earth2.io
 {
     public class Startup
     {
+        readonly string MyAllowSpecificOrigins = "AllowLocalHost";
+
         public Startup(IConfiguration configuration)
         {
             Configuration = configuration;
@@ -33,6 +35,17 @@ namespace Earth2.io
             SearchRepository.SetConnection(connectionString);
             ErrorRepository.SetConnection(connectionString);
 
+            services.AddCors(options =>
+            {
+                options.AddPolicy(name: MyAllowSpecificOrigins,
+                                  builder =>
+                                  {
+                                      builder.WithOrigins("http://localhost:3000")
+                                                  .AllowAnyHeader()
+                                                  .AllowAnyMethod();
+                                  });
+            });
+
             services.AddMvc().SetCompatibilityVersion(CompatibilityVersion.Version_2_1);
         }
 
@@ -48,6 +61,7 @@ namespace Earth2.io
                 app.UseHsts();
             }
 
+            app.UseCors(MyAllowSpecificOrigins);
             app.UseHttpsRedirection();
             app.UseMvc();
         }
